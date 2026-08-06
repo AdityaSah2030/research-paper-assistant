@@ -1,4 +1,5 @@
 from qdrant_client import QdrantClient
+from qdrant_client.models import QueryRequest
 from qdrant_client.models import (
     Distance,
     VectorParams,
@@ -44,3 +45,16 @@ def upload_vectors(
         collection_name=collection_name,
         points=points
     )
+
+
+def search_vectors(
+    client,
+    collection_name,
+    query_vector,
+    limit=3
+):
+    return client.query_points(
+        collection_name=collection_name,
+        query=query_vector,
+        limit=limit
+    ).points
