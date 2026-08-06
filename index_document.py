@@ -8,16 +8,19 @@ from app.rag.vector_store import (
     upload_vectors
 )
 
-from app.rag.retriever import retrieve_chunks
+COLLECTION_NAME = "research_papers"
 
-from app.llm.gemini_client import generate_answer
-
+print("Loading PDF...")
 
 pdf_text = load_pdf(
     "data/sample_papers/attention.pdf"
 )
 
+print("Chunking...")
+
 chunks = chunk_text(pdf_text)
+
+print("Generating embeddings...")
 
 embedding_model = get_embedding_model()
 
@@ -29,48 +32,25 @@ client = get_qdrant_client()
 
 try:
     client.delete_collection(
-        collection_name="research_papers"
+        collection_name=COLLECTION_NAME
     )
 except:
     pass
 
 create_collection(
     client,
-    collection_name="research_papers",
+    collection_name=COLLECTION_NAME,
     vector_size=3072
 )
 
 upload_vectors(
     client,
-    "research_papers",
+    COLLECTION_NAME,
     chunks,
-    vectors
+    vectors,
+    source_file="attention.pdf"
 )
 
-question = """
-What optimizer was used?
-Give all hyperparameters and learning rate details.
-"""
-
-retrieved_chunks = retrieve_chunks(
-    client,
-    "research_papers",
-    question
-)
-
-context = "\n\n".join(
-    retrieved_chunks
-)
-
-answer = generate_answer(
-    question,
-    context
-)
-
-print("\nQUESTION:")
-print(question)
-
-print("\nANSWER:")
-print(answer)
+print(f"Indexed {len(chunks)} chunks.")
 
 client.close()

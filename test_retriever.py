@@ -34,7 +34,11 @@ try:
 except:
     pass
 
-create_collection(client)
+create_collection(
+    client,
+    collection_name="research_papers",
+    vector_size=3072
+)
 
 upload_vectors(
     client,

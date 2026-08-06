@@ -22,6 +22,10 @@ def retrieve_chunks(
     )
 
     return [
-        result.payload["text"]
+        {
+            "text": result.payload["text"],
+            "source": result.payload["source"],
+            "chunk_id": result.payload["chunk_id"]
+        }
         for result in results
     ]

@@ -10,11 +10,15 @@ def get_qdrant_client():
     return QdrantClient(path="./qdrant_data")
 
 
-def create_collection(client):
+def create_collection(
+    client,
+    collection_name="research_papers",
+    vector_size=3072
+):
     client.create_collection(
-        collection_name="research_papers",
+        collection_name=collection_name,
         vectors_config=VectorParams(
-            size=3072,
+            size=vector_size,
             distance=Distance.COSINE
         )
     )
@@ -24,7 +28,8 @@ def upload_vectors(
     client,
     collection_name,
     chunks,
-    vectors
+    vectors,
+    source_file
 ):
     points = []
 
@@ -36,7 +41,9 @@ def upload_vectors(
                 id=idx,
                 vector=vector,
                 payload={
-                    "text": chunk
+                    "text": chunk,
+                    "source": source_file,
+                    "chunk_id": idx
                 }
             )
         )
