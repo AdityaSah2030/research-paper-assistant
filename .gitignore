@@ -216,3 +216,17 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
+
+# Vector Databases
+qdrant_storage/
+chroma_db/
+
+# Project Data
+data/uploads/
+cache/
