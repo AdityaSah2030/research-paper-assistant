@@ -8,10 +8,10 @@
     <title>ResearchAI</title>
 
     <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <link rel="stylesheet"
-          href="style.css">
+        href="/frontend/style.css">
 </head>
 
 <body>
@@ -174,14 +174,22 @@
 
                 <div class="tool-card answer-card">
 
-                    <h2>Answer</h2>
+                    <div class="answer-card-header">
+
+                        <h2>Answer</h2>
+
+                        <button
+                            id="copy-answer-btn"
+                            class="copy-btn">
+                            Copy
+                        </button>
+
+                    </div>
 
                     <div id="answer-output">
-
                         <p class="placeholder">
-                            Generated answer will appear here.
+                            Your answer will appear here.
                         </p>
-
                     </div>
 
                 </div>
@@ -296,7 +304,7 @@
         <i class="fas fa-arrow-up"></i>
     </div>
 
-    <script src="script.js"></script>
+    <script src="/frontend/script.js"></script>
 
 </body>
 

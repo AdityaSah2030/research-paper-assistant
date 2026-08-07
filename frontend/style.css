@@ -388,6 +388,19 @@ nav {
     font-size: 0.95rem;
 }
 
+#upload-status {
+    margin-top: 1rem;
+
+    font-size: 0.95rem;
+
+    color: var(--text-secondary);
+}
+
+.btn-primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
 /* =========================
    TEXTAREA
 ========================= */
@@ -426,12 +439,24 @@ textarea:focus {
    ANSWER + SOURCES
 ========================= */
 
-.answer-card {
-    min-height: 320px;
+.answer-card-header {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 1rem;
 }
 
-#answer-output {
-    line-height: 1.8;
+.answer-card-header h2 {
+
+    margin-bottom: 0;
+}
+
+.answer-card {
+    min-height: 400px;
 }
 
 #sources-output {
@@ -444,6 +469,45 @@ textarea:focus {
     color: var(--text-secondary);
 }
 
+.source-item {
+    padding: 0.75rem 1rem;
+    background: var(--accent-light);
+    border-radius: 12px;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+#answer-output {
+    line-height: 1.8;
+    white-space: pre-wrap;
+}
+
+.copy-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 90px;
+    height: 40px;
+    border: none;
+    border-radius: 999px;
+    background: var(--accent);
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.copy-btn:hover {
+    background: var(--accent-hover);
+}
+
+.answer-content {
+    line-height: 1.9;
+    white-space: normal;
+}
+
 /* =========================
    HOW IT WORKS
 ========================= */
@@ -454,11 +518,8 @@ textarea:focus {
 
 .how-it-works h2 {
     text-align: center;
-
     font-size: 2.5rem;
-
     margin-bottom: 3rem;
-
     letter-spacing: -0.03em;
 }
 
@@ -571,55 +632,12 @@ footer {
         grid-template-columns: 1fr;
     }
 
-    .upload-controls {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
     .hero h1 {
         font-size: 3rem;
     }
 
     .how-it-works h2 {
         font-size: 2rem;
-    }
-
-    /* =========================
-    CUSTOM FILE INPUT
-    ========================= */
-
-    #pdf-file {
-        display: none;
-    }
-
-    .custom-file-upload {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.75rem;
-
-        padding: 0.9rem 1.25rem;
-
-        border: 1px solid var(--border-color);
-
-        border-radius: 999px;
-
-        background: var(--bg-primary);
-
-        cursor: pointer;
-
-        font-weight: 600;
-
-        transition: all var(--transition-fast);
-    }
-
-    .custom-file-upload:hover {
-        border-color: var(--accent);
-        color: var(--accent);
-    }
-
-    #file-name {
-        color: var(--text-secondary);
-        font-size: 0.95rem;
     }
 
 }

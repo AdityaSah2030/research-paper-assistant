@@ -172,4 +172,258 @@ document
                 );
             }
         );
-    });
+    }
+);
+
+// =========================
+// PDF UPLOAD
+// =========================
+
+const uploadBtn =
+    document.getElementById("upload-btn");
+
+const uploadStatus =
+    document.getElementById("upload-status");
+
+uploadBtn.addEventListener(
+    "click",
+    async () => {
+
+        if (
+            !pdfInput.files ||
+            pdfInput.files.length === 0
+        ) {
+
+            uploadStatus.textContent =
+                "Please select a PDF first.";
+
+            return;
+        }
+
+        const file =
+            pdfInput.files[0];
+
+        const formData =
+            new FormData();
+
+        formData.append(
+            "file",
+            file
+        );
+
+        try {
+
+            uploadBtn.disabled = true;
+
+            uploadBtn.textContent =
+                "Uploading...";
+
+            uploadStatus.textContent =
+                "Indexing PDF...";
+
+            const response =
+                await fetch(
+                    "/upload",
+                    {
+                        method: "POST",
+                        body: formData
+                    }
+                );
+
+            const data =
+                await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.detail ||
+                    "Upload failed"
+                );
+            }
+
+            uploadStatus.textContent =
+                `✓ ${data.file_name} indexed successfully (${data.chunks_indexed} chunks)`;
+
+        } catch (error) {
+
+            uploadStatus.textContent =
+                `✗ ${error.message}`;
+
+        } finally {
+
+            uploadBtn.disabled = false;
+
+            uploadBtn.textContent =
+                "Upload PDF";
+        }
+    }
+);
+
+// =========================
+// ASK QUESTION
+// =========================
+
+const askBtn =
+    document.getElementById("ask-btn");
+
+const questionInput =
+    document.getElementById("question-input");
+
+const answerOutput =
+    document.getElementById("answer-output");
+
+const sourcesOutput =
+    document.getElementById("sources-output");
+
+const copyBtn =
+document.getElementById(
+    "copy-answer-btn"
+);
+
+function formatAnswer(text) {
+
+    let formatted = text;
+
+    formatted = formatted.replace(
+        /Summary:/g,
+        "<strong>Summary:</strong>"
+    );
+
+    formatted = formatted.replace(
+        /Key Findings:/g,
+        "<strong>Key Findings:</strong>"
+    );
+
+    formatted = formatted.replace(
+        /Conclusion:/g,
+        "<strong>Conclusion:</strong>"
+    );
+
+    formatted = formatted.replace(
+        /\n/g,
+        "<br>"
+    );
+
+    return formatted;
+}
+
+askBtn.addEventListener(
+    "click",
+    async () => {
+
+        const question =
+            questionInput.value.trim();
+
+        if (!question) {
+
+            answerOutput.innerHTML =
+                "<p>Please enter a question.</p>";
+
+            return;
+        }
+
+        try {
+
+            askBtn.disabled = true;
+
+            askBtn.textContent =
+                "Thinking...";
+
+            answerOutput.innerHTML =
+                "<p>Generating answer...</p>";
+
+            sourcesOutput.innerHTML =
+                "<p>Searching sources...</p>";
+
+            const response =
+                await fetch(
+                    "/ask",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            question: question
+                        })
+                    }
+                );
+
+            const data =
+                await response.json();
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.detail ||
+                    "Request failed"
+                );
+            }
+
+            answerOutput.innerHTML = `
+                <div class="answer-content">
+                    ${formatAnswer(data.answer)}
+                </div>
+            `;
+
+            copyBtn.onclick =
+                async () => {
+
+                    await navigator.clipboard.writeText(
+                        data.answer
+                    );
+
+                    copyBtn.textContent =
+                        "Copied!";
+
+                    setTimeout(() => {
+
+                        copyBtn.textContent =
+                            "Copy";
+
+                    }, 1500);
+                };
+
+            sourcesOutput.innerHTML =
+                "";
+
+            data.sources.forEach(
+                source => {
+
+                    const sourceDiv =
+                        document.createElement(
+                            "div"
+                        );
+
+                    sourceDiv.className =
+                        "source-item";
+
+                    sourceDiv.innerHTML =
+                        `📄 ${source.source}
+                        (Chunk ${source.chunk_id})`;
+
+                    sourcesOutput.appendChild(
+                        sourceDiv
+                    );
+                }
+            );
+
+        } catch (error) {
+
+            answerOutput.innerHTML =
+                `<p>${error.message}</p>`;
+
+            sourcesOutput.innerHTML =
+                "";
+
+        } finally {
+
+            askBtn.disabled = false;
+
+            askBtn.textContent =
+                "Ask Question";
+        }
+    }
+);

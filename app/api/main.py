@@ -1,25 +1,32 @@
-from fastapi import FastAPI
-
-from app.api.schemas import QuestionRequest
-
-from app.rag.retriever import retrieve_chunks
-from app.rag.vector_store import get_qdrant_client
-
-from app.llm.gemini_client import generate_answer
-
 from fastapi import (
     FastAPI,
     UploadFile,
     File
 )
 
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
 import os
 
+from app.api.schemas import QuestionRequest
+
 from app.rag.indexer import index_pdf
+from app.rag.retriever import retrieve_chunks
+from app.rag.vector_store import get_qdrant_client
+
+from app.llm.gemini_client import generate_answer
+
 
 app = FastAPI(
     title="Research Paper Assistant API",
     version="1.0.0"
+)
+
+app.mount(
+    "/frontend",
+    StaticFiles(directory="frontend"),
+    name="frontend"
 )
 
 COLLECTION_NAME = "research_papers"
@@ -33,12 +40,21 @@ os.makedirs(
 
 client = get_qdrant_client()
 
-@app.get("/")
-def root():
-    return {
-        "message": "Research Paper Assistant API"
-    }
 
+# =========================
+# FRONTEND
+# =========================
+
+@app.get("/")
+def frontend():
+    return FileResponse(
+        "frontend/index.html"
+    )
+
+
+# =========================
+# HEALTH CHECK
+# =========================
 
 @app.get("/health")
 def health():
@@ -46,10 +62,16 @@ def health():
         "status": "healthy"
     }
 
+
+# =========================
+# UPLOAD PDF
+# =========================
+
 @app.post("/upload")
 async def upload_pdf(
     file: UploadFile = File(...)
 ):
+
     file_path = os.path.join(
         UPLOAD_DIR,
         file.filename
@@ -59,6 +81,7 @@ async def upload_pdf(
         file_path,
         "wb"
     ) as buffer:
+
         buffer.write(
             await file.read()
         )
@@ -75,14 +98,28 @@ async def upload_pdf(
         "chunks_indexed": chunk_count
     }
 
+
+# =========================
+# ASK QUESTION
+# =========================
+
 @app.post("/ask")
-def ask_question(request: QuestionRequest):
+def ask_question(
+    request: QuestionRequest
+):
 
     retrieved_chunks = retrieve_chunks(
         client,
         COLLECTION_NAME,
         request.question
     )
+
+    if not retrieved_chunks:
+        return {
+            "question": request.question,
+            "answer": "The provided research paper does not contain enough information to answer this question.",
+            "sources": []
+        }
 
     context = "\n\n".join(
         chunk["text"]
