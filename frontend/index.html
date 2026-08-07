@@ -120,13 +120,17 @@
                         id="pdf-file"
                         accept=".pdf">
 
-                    <button
-                        id="upload-btn"
-                        class="btn-primary">
-                        Upload PDF
-                    </button>
+                    <div class="upload-footer">
 
-                    <div id="upload-status"></div>
+                        <div id="upload-status"></div>
+
+                        <button
+                            id="upload-btn"
+                            class="btn-primary">
+                            Upload PDF
+                        </button>
+
+                    </div>
 
                 </div>
 
@@ -160,9 +164,9 @@
 
                         <div id="sources-output">
 
-                            <p class="placeholder">
+                            <div class="placeholder-box">
                                 Sources will appear here.
-                            </p>
+                            </div>
 
                         </div>
 
@@ -187,9 +191,15 @@
                     </div>
 
                     <div id="answer-output">
-                        <p class="placeholder">
-                            Your answer will appear here.
-                        </p>
+
+                        <div class="answer-box">
+
+                            <p class="placeholder">
+                                Your answer will appear here.
+                            </p>
+
+                        </div>
+
                     </div>
 
                 </div>

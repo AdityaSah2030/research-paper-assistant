@@ -450,13 +450,25 @@ textarea:focus {
     margin-bottom: 1rem;
 }
 
-.answer-card-header h2 {
-
-    margin-bottom: 0;
+.answer-card{
+    display:flex;
+    flex-direction:column;
 }
 
-.answer-card {
-    min-height: 400px;
+.answer-box{
+    background:var(--bg-primary);
+    border:1px solid var(--border-color);
+    border-radius:16px;
+
+    padding:24px;
+
+    margin-top:18px;
+
+    min-height:350px;
+
+    display:flex;
+    align-items:flex-start;
+    justify-content:flex-start;
 }
 
 #sources-output {
@@ -465,8 +477,10 @@ textarea:focus {
     gap: 0.75rem;
 }
 
-.placeholder {
-    color: var(--text-secondary);
+.placeholder{
+    margin:0;
+    color:var(--text-secondary);
+    text-align:left;
 }
 
 .source-item {
@@ -477,9 +491,8 @@ textarea:focus {
     font-size: 0.95rem;
 }
 
-#answer-output {
-    line-height: 1.8;
-    white-space: pre-wrap;
+#answer-output{
+    width:100%;
 }
 
 .copy-btn {
@@ -662,4 +675,72 @@ footer {
         z-index: 9999;
     }
 
+}
+
+
+/* ===== Phase 1 UI Polish ===== */
+
+.upload-footer{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:1rem;
+    margin-top:1rem;
+}
+
+.upload-footer .btn-primary,
+.question-card{
+    display:flex;
+    flex-direction:column;
+}
+
+.question-card .btn-primary{
+    align-self:flex-end;
+    margin-top:20px;
+}
+
+#upload-status{
+    flex:1;
+    font-size:.92rem;
+    color:var(--text-secondary);
+    line-height:1.5;
+}
+
+.answer-box{
+    min-height:360px;
+    border:1px solid var(--border-color);
+    border-radius:16px;
+    background:var(--bg-primary);
+    padding:1.5rem;
+    line-height:1.8;
+    display:flex;
+    align-items:flex-start;
+}
+
+.placeholder-box{
+    min-height:180px;
+    border:1px solid var(--border-color);
+    border-radius:16px;
+    background:var(--bg-primary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:1.5rem;
+    color:var(--text-secondary);
+}
+
+.sources-card{
+    display:flex;
+    flex-direction:column;
+}
+
+#sources-output{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+}
+
+#sources-output .placeholder-box{
+    flex:1;
 }

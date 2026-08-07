@@ -248,8 +248,9 @@ uploadBtn.addEventListener(
             uploadBtn.textContent =
                 "Uploading...";
 
-            uploadStatus.textContent =
-                "Indexing PDF...";
+            uploadStatus.innerHTML = `
+                Indexing PDF...
+            `;
 
             const response =
                 await fetch(
@@ -270,13 +271,18 @@ uploadBtn.addEventListener(
                 );
             }
 
-            uploadStatus.textContent =
-                `✓ ${data.file_name} indexed successfully (${data.chunks_indexed} chunks)`;
+            uploadStatus.innerHTML = `
+                <strong>${data.file_name}</strong><br>
+                Indexed successfully • ${data.chunks_indexed} chunks created
+            `;
 
         } catch (error) {
 
-            uploadStatus.textContent =
-                `✗ ${error.message}`;
+            uploadStatus.innerHTML = `
+                <span style="color:#dc2626;">
+                    ${error.message}
+                </span>
+            `;
 
         } finally {
 
@@ -393,8 +399,12 @@ askBtn.addEventListener(
             }
 
             answerOutput.innerHTML = `
-                <div class="answer-content">
-                    ${formatAnswer(data.answer)}
+                <div class="answer-box">
+
+                    <div class="answer-content">
+                        ${formatAnswer(data.answer)}
+                    </div>
+
                 </div>
             `;
 
@@ -416,8 +426,7 @@ askBtn.addEventListener(
                     }, 1500);
                 };
 
-            sourcesOutput.innerHTML =
-                "";
+            sourcesOutput.innerHTML = "";
 
             data.sources.forEach(
                 source => {
