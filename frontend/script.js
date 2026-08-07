@@ -310,6 +310,16 @@ const answerOutput =
 const sourcesOutput =
     document.getElementById("sources-output");
 
+const answerBox =
+    document.getElementById(
+        "answer-box"
+    );
+
+const sourcesBox =
+    document.getElementById(
+        "sources-box"
+    );
+
 const copyBtn =
 document.getElementById(
     "copy-answer-btn"
@@ -364,11 +374,15 @@ askBtn.addEventListener(
             askBtn.textContent =
                 "Thinking...";
 
-            answerOutput.innerHTML =
-                "<p>Generating answer...</p>";
+            answerBox.innerHTML = `
+                <p class="placeholder">
+                    Generating answer...
+                </p>
+            `;
 
-            sourcesOutput.innerHTML =
-                "<p>Searching sources...</p>";
+            sourcesBox.innerHTML = `
+                Searching sources...
+            `;
 
             const response =
                 await fetch(
@@ -398,13 +412,9 @@ askBtn.addEventListener(
                 );
             }
 
-            answerOutput.innerHTML = `
-                <div class="answer-box">
-
-                    <div class="answer-content">
-                        ${formatAnswer(data.answer)}
-                    </div>
-
+            answerBox.innerHTML = `
+                <div class="answer-content">
+                    ${formatAnswer(data.answer)}
                 </div>
             `;
 
@@ -426,7 +436,7 @@ askBtn.addEventListener(
                     }, 1500);
                 };
 
-            sourcesOutput.innerHTML = "";
+            sourcesBox.innerHTML = "";
 
             data.sources.forEach(
                 source => {
@@ -443,7 +453,7 @@ askBtn.addEventListener(
                         `📄 ${source.source}
                         (Chunk ${source.chunk_id})`;
 
-                    sourcesOutput.appendChild(
+                    sourcesBox.appendChild(
                         sourceDiv
                     );
                 }
@@ -451,11 +461,15 @@ askBtn.addEventListener(
 
         } catch (error) {
 
-            answerOutput.innerHTML =
-                `<p>${error.message}</p>`;
+            answerBox.innerHTML = `
+                <p class="placeholder">
+                    ${error.message}
+                </p>
+            `;
 
-            sourcesOutput.innerHTML =
-                "";
+            sourcesBox.innerHTML = `
+                Sources will appear here.
+            `;
 
         } finally {
 
