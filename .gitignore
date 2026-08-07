@@ -1,3 +1,6 @@
+# Secrets
+.env
+
 # Vector Databases
 qdrant_storage/
 qdrant_data/
@@ -12,4 +15,4 @@ data/sample_papers/
 # Local development
 .venv/
 __pycache__/
-
+*.pyc

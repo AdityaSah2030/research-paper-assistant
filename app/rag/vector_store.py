@@ -1,13 +1,19 @@
+import os
+
 from qdrant_client import QdrantClient
-from qdrant_client.models import QueryRequest
 from qdrant_client.models import (
     Distance,
     VectorParams,
     PointStruct
 )
 
+
 def get_qdrant_client():
-    return QdrantClient(path="./qdrant_data")
+
+    return QdrantClient(
+        url=os.getenv("QDRANT_URL"),
+        api_key=os.getenv("QDRANT_API_KEY")
+    )
 
 
 def create_collection(
@@ -15,13 +21,30 @@ def create_collection(
     collection_name="research_papers",
     vector_size=3072
 ):
-    client.create_collection(
-        collection_name=collection_name,
-        vectors_config=VectorParams(
-            size=vector_size,
-            distance=Distance.COSINE
+
+    try:
+
+        client.get_collection(
+            collection_name=collection_name
         )
-    )
+
+        print(
+            f"Collection '{collection_name}' already exists."
+        )
+
+    except Exception:
+
+        client.create_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(
+                size=vector_size,
+                distance=Distance.COSINE
+            )
+        )
+
+        print(
+            f"Collection '{collection_name}' created."
+        )
 
 
 def upload_vectors(
@@ -31,11 +54,13 @@ def upload_vectors(
     vectors,
     source_file
 ):
+
     points = []
 
     for idx, (chunk, vector) in enumerate(
         zip(chunks, vectors)
     ):
+
         points.append(
             PointStruct(
                 id=idx,
@@ -60,6 +85,7 @@ def search_vectors(
     query_vector,
     limit=3
 ):
+
     return client.query_points(
         collection_name=collection_name,
         query=query_vector,
