@@ -230,3 +230,5 @@ chroma_db/
 # Project Data
 data/uploads/
 cache/
+qdrant_data/
+uploads/
