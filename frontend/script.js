@@ -1,3 +1,15 @@
+// A tab-scoped session survives refreshes but is new in a new browser tab/session.
+const SESSION_STORAGE_KEY = "researchai_session_id";
+let researchSessionId = sessionStorage.getItem(SESSION_STORAGE_KEY);
+if (!researchSessionId) {
+    researchSessionId = crypto.randomUUID();
+    sessionStorage.setItem(SESSION_STORAGE_KEY, researchSessionId);
+}
+
+function sessionHeaders(extra = {}) {
+    return { ...extra, "X-Session-ID": researchSessionId };
+}
+
 // =========================
 // THEME TOGGLE
 // =========================
@@ -222,7 +234,7 @@ async function refreshUploadedPapers() {
     if (!uploadedPapersList) return;
 
     try {
-        const response = await fetch("/documents");
+        const response = await fetch("/documents", { headers: sessionHeaders() });
         const data = await response.json();
 
         if (!response.ok) {
@@ -300,6 +312,7 @@ uploadBtn.addEventListener(
                     "/upload",
                     {
                         method: "POST",
+                        headers: sessionHeaders(),
                         body: formData
                     }
                 );
@@ -438,10 +451,9 @@ askBtn.addEventListener(
                     {
                         method: "POST",
 
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
+                        headers: sessionHeaders({
+                            "Content-Type": "application/json"
+                        }),
 
                         body: JSON.stringify({
                             question: question
