@@ -95,24 +95,15 @@ const pdfInput =
 const fileName =
     document.getElementById("file-name");
 
-pdfInput.addEventListener(
-    "change",
-    () => {
-
-        if (
-            pdfInput.files.length > 0
-        ) {
-
-            fileName.textContent =
-                pdfInput.files[0].name;
-
-        } else {
-
-            fileName.textContent =
-                "No file selected";
-        }
+pdfInput.addEventListener("change", () => {
+    if (!pdfInput.files || pdfInput.files.length === 0) {
+        fileName.textContent = "No file selected";
+    } else if (pdfInput.files.length === 1) {
+        fileName.textContent = pdfInput.files[0].name;
+    } else {
+        fileName.textContent = `${pdfInput.files.length} PDFs selected (${Array.from(pdfInput.files).map(f => f.name).join(", ")})`;
     }
-);
+});
 
 // =========================
 // BACK TO TOP
@@ -218,7 +209,7 @@ document
 );
 
 // =========================
-// PDF UPLOAD
+// PDF UPLOAD & SESSION CATALOG
 // =========================
 
 const uploadBtn =
@@ -229,6 +220,9 @@ const uploadStatus =
 
 const uploadedPapersList =
     document.getElementById("uploaded-papers-list");
+
+const paperCountBadge =
+    document.getElementById("paper-count-badge");
 
 async function refreshUploadedPapers() {
     if (!uploadedPapersList) return;
@@ -241,20 +235,26 @@ async function refreshUploadedPapers() {
             throw new Error(data.detail || "Could not load indexed papers.");
         }
 
+        const docs = data.documents || [];
+
+        if (paperCountBadge) {
+            paperCountBadge.textContent = `${docs.length} ${docs.length === 1 ? 'paper' : 'papers'}`;
+        }
+
         uploadedPapersList.innerHTML = "";
 
-        if (!data.documents || data.documents.length === 0) {
-            uploadedPapersList.textContent = "No papers indexed yet.";
+        if (docs.length === 0) {
+            uploadedPapersList.innerHTML = '<div class="empty-papers-msg">No papers indexed yet in this session. Upload a PDF to begin.</div>';
             return;
         }
 
-        data.documents.forEach(documentInfo => {
+        docs.forEach(documentInfo => {
             const row = document.createElement("div");
             row.className = "uploaded-paper-row";
 
             const name = document.createElement("span");
             name.className = "uploaded-paper-name";
-            name.textContent = documentInfo.file_name;
+            name.textContent = `📄 ${documentInfo.file_name}`;
 
             const count = document.createElement("span");
             count.className = "uploaded-paper-count";
@@ -264,96 +264,122 @@ async function refreshUploadedPapers() {
             uploadedPapersList.appendChild(row);
         });
     } catch (error) {
-        uploadedPapersList.textContent = "Could not load the indexed paper list.";
+        uploadedPapersList.innerHTML = '<div class="empty-papers-msg">Could not load the indexed paper list.</div>';
     }
 }
 
 refreshUploadedPapers();
 
-uploadBtn.addEventListener(
-    "click",
-    async () => {
+uploadBtn.addEventListener("click", async () => {
+    if (!pdfInput.files || pdfInput.files.length === 0) {
+        uploadStatus.innerHTML = '<span style="color:#dc2626;">Please select at least one PDF first.</span>';
+        return;
+    }
 
-        if (
-            !pdfInput.files ||
-            pdfInput.files.length === 0
-        ) {
+    const files = Array.from(pdfInput.files);
+    uploadBtn.disabled = true;
 
-            uploadStatus.textContent =
-                "Please select a PDF first.";
+    let successful = 0;
+    let failed = [];
 
-            return;
-        }
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const stepPrefix = files.length > 1 ? `[${i + 1}/${files.length}] ` : "";
+        uploadBtn.textContent = files.length > 1 ? `Uploading (${i + 1}/${files.length})...` : "Uploading...";
+        uploadStatus.innerHTML = `Indexing <strong>${file.name}</strong> ${stepPrefix}...`;
 
-        const file =
-            pdfInput.files[0];
-
-        const formData =
-            new FormData();
-
-        formData.append(
-            "file",
-            file
-        );
+        const formData = new FormData();
+        formData.append("file", file);
 
         try {
-
-            uploadBtn.disabled = true;
-
-            uploadBtn.textContent =
-                "Uploading...";
-
-            uploadStatus.innerHTML = `
-                Indexing PDF...
-            `;
-
-            const response =
-                await fetch(
-                    "/upload",
-                    {
-                        method: "POST",
-                        headers: sessionHeaders(),
-                        body: formData
-                    }
-                );
+            const response = await fetch("/upload", {
+                method: "POST",
+                headers: sessionHeaders(),
+                body: formData
+            });
 
             const responseText = await response.text();
             let data;
-
             try {
                 data = JSON.parse(responseText);
             } catch {
-                throw new Error(
-                    `Upload failed (HTTP ${response.status}). Check server logs.`
-                );
+                throw new Error(`Upload failed (HTTP ${response.status}). Check server logs.`);
             }
 
             if (!response.ok) {
                 throw new Error(data.detail || "Upload failed");
             }
 
-            uploadStatus.textContent =
-                `Indexed ${data.file_name} • ${data.chunks_indexed} chunks created`;
-
+            successful++;
             await refreshUploadedPapers();
-
-        } catch (error) {
-
-            uploadStatus.innerHTML = `
-                <span style="color:#dc2626;">
-                    ${error.message}
-                </span>
-            `;
-
-        } finally {
-
-            uploadBtn.disabled = false;
-
-            uploadBtn.textContent =
-                "Upload PDF";
+        } catch (err) {
+            failed.push(`${file.name}: ${err.message}`);
         }
     }
-);
+
+    uploadBtn.disabled = false;
+    uploadBtn.textContent = "Upload PDF";
+    pdfInput.value = "";
+    fileName.textContent = "No file selected";
+
+    if (failed.length === 0) {
+        uploadStatus.innerHTML = `<span style="color:var(--accent); font-weight: 500;">✓ Indexed ${successful} ${successful === 1 ? 'paper' : 'papers'} successfully.</span>`;
+    } else if (successful > 0) {
+        uploadStatus.innerHTML = `<span style="color:#dc2626;">Indexed ${successful} paper(s). Failed: ${failed.join("; ")}</span>`;
+    } else {
+        uploadStatus.innerHTML = `<span style="color:#dc2626;">${failed.join("; ")}</span>`;
+    }
+
+    await refreshUploadedPapers();
+});
+
+// =========================
+// SESSION RESET
+// =========================
+
+const resetSessionBtn = document.getElementById("reset-session-btn");
+
+if (resetSessionBtn) {
+    resetSessionBtn.addEventListener("click", async () => {
+        const confirmed = confirm(
+            "Start a new session? This will clear all uploaded papers and answers for this session."
+        );
+        if (!confirmed) return;
+
+        try {
+            resetSessionBtn.disabled = true;
+            await fetch("/session/reset", {
+                method: "POST",
+                headers: sessionHeaders()
+            });
+        } catch (e) {
+            console.warn("Session reset request failed:", e);
+        } finally {
+            researchSessionId = crypto.randomUUID();
+            sessionStorage.setItem(SESSION_STORAGE_KEY, researchSessionId);
+
+            pdfInput.value = "";
+            fileName.textContent = "No file selected";
+            uploadStatus.textContent = "New session started with empty workspace.";
+
+            const questionInput = document.getElementById("question-input");
+            if (questionInput) questionInput.value = "";
+
+            const answerBox = document.getElementById("answer-box");
+            if (answerBox) {
+                answerBox.innerHTML = '<p class="placeholder">Your answer will appear here.</p>';
+            }
+
+            const sourcesBox = document.getElementById("sources-box");
+            if (sourcesBox) {
+                sourcesBox.innerHTML = 'Sources will appear here.';
+            }
+
+            await refreshUploadedPapers();
+            resetSessionBtn.disabled = false;
+        }
+    });
+}
 
 // =========================
 // ASK QUESTION

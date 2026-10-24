@@ -36,6 +36,14 @@
 
                 <div class="nav-controls">
 
+                    <button id="reset-session-btn"
+                            class="btn-reset"
+                            title="Start a fresh session with an empty workspace"
+                            aria-label="New Session">
+                        <i class="fas fa-rotate-right"></i>
+                        <span>New Session</span>
+                    </button>
+
                     <button id="theme-toggle"
                             class="theme-toggle"
                             aria-label="Toggle Theme">
@@ -89,10 +97,10 @@
 
                 <div class="tool-card upload-card">
 
-                    <h2>Upload Research Paper</h2>
+                    <h2>Upload Research Papers</h2>
 
                     <p>
-                        Select PDFs to build a temporary knowledge base for this browser session.
+                        Upload one or multiple PDFs to build a knowledge base for this browser session.
                     </p>
 
                     <label for="pdf-file" class="upload-dropzone">
@@ -102,11 +110,11 @@
                         </div>
 
                         <div class="upload-title">
-                            Drag & Drop PDF Here
+                            Drag & Drop PDFs Here
                         </div>
 
                         <div class="upload-subtitle">
-                            or click to browse
+                            or click to browse (select one or multiple PDFs)
                         </div>
 
                         <span id="file-name">
@@ -118,7 +126,8 @@
                     <input
                         type="file"
                         id="pdf-file"
-                        accept=".pdf">
+                        accept=".pdf"
+                        multiple>
 
                     <div class="upload-footer">
 
@@ -133,7 +142,10 @@
                     </div>
 
                     <div class="uploaded-papers-section">
-                        <h3>Indexed Papers</h3>
+                        <div class="uploaded-papers-header">
+                            <h3>Indexed Papers</h3>
+                            <span id="paper-count-badge" class="paper-count-badge">0 papers</span>
+                        </div>
                         <div id="uploaded-papers-list" class="uploaded-papers-list">
                             Loading indexed papers...
                         </div>

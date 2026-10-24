@@ -2,14 +2,18 @@ from pathlib import Path
 import os
 import shutil
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.schemas import QuestionRequest
 from app.rag.indexer import index_pdf
 from app.rag.retriever import retrieve_chunks
-from app.rag.vector_store import get_qdrant_client, get_document_catalog
+from app.rag.vector_store import (
+    get_qdrant_client,
+    get_document_catalog,
+    delete_session_documents,
+)
 from app.llm.gemini_client import generate_answer
 
 
@@ -42,10 +46,10 @@ def health():
 
 
 @app.get("/documents")
-def list_documents():
-    """List all currently indexed PDFs and their chunk counts."""
+def list_documents(x_session_id: str | None = Header(default=None, alias="X-Session-ID")):
+    """List all currently indexed PDFs and their chunk counts for the current session."""
     try:
-        return {"documents": get_document_catalog(client, COLLECTION_NAME)}
+        return {"documents": get_document_catalog(client, COLLECTION_NAME, session_id=x_session_id)}
     except Exception as exc:
         raise HTTPException(
             status_code=502,
@@ -54,18 +58,28 @@ def list_documents():
 
 
 @app.post("/upload")
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(
+    file: UploadFile = File(...),
+    x_session_id: str | None = Header(default=None, alias="X-Session-ID")
+):
     if not file.filename or Path(file.filename).suffix.lower() != ".pdf":
         raise HTTPException(status_code=400, detail="Please upload a PDF file.")
 
     safe_name = Path(file.filename).name
-    file_path = os.path.join(UPLOAD_DIR, safe_name)
+    session_dir = os.path.join(UPLOAD_DIR, x_session_id or "default")
+    os.makedirs(session_dir, exist_ok=True)
+    file_path = os.path.join(session_dir, safe_name)
 
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        chunk_count = index_pdf(client, COLLECTION_NAME, file_path)
+        chunk_count = index_pdf(
+            client=client,
+            collection_name=COLLECTION_NAME,
+            pdf_path=file_path,
+            session_id=x_session_id
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=500,
@@ -82,7 +96,10 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 
 @app.post("/ask")
-def ask_question(request: QuestionRequest):
+def ask_question(
+    request: QuestionRequest,
+    x_session_id: str | None = Header(default=None, alias="X-Session-ID")
+):
     question = request.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Please enter a question.")
@@ -91,7 +108,8 @@ def ask_question(request: QuestionRequest):
         retrieved_chunks = retrieve_chunks(
             client,
             COLLECTION_NAME,
-            question
+            question,
+            session_id=x_session_id
         )
 
         if not retrieved_chunks:
@@ -136,3 +154,20 @@ def ask_question(request: QuestionRequest):
             status_code=502,
             detail=f"Question answering failed: {type(exc).__name__}: {exc}"
         ) from exc
+
+
+@app.post("/session/reset")
+def reset_session(x_session_id: str | None = Header(default=None, alias="X-Session-ID")):
+    """Reset the current browser session by deleting its indexed vectors and uploaded files."""
+    if x_session_id:
+        try:
+            delete_session_documents(client, COLLECTION_NAME, x_session_id)
+            session_dir = os.path.join(UPLOAD_DIR, x_session_id)
+            if os.path.exists(session_dir):
+                shutil.rmtree(session_dir, ignore_errors=True)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Could not reset session: {type(exc).__name__}: {exc}"
+            ) from exc
+    return {"message": "Session reset successfully"}

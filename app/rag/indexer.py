@@ -1,4 +1,6 @@
 import os
+import re
+import time
 import uuid
 
 from app.rag.loader import load_pdf_pages
@@ -11,10 +13,26 @@ from app.rag.vector_store import (
 )
 
 
-def index_pdf(client, collection_name, pdf_path):
+def _embed_chunks_with_retry(embedding_model, chunks, max_retries=4):
+    for attempt in range(max_retries):
+        try:
+            return embedding_model.embed_documents(chunks)
+        except Exception as exc:
+            err_msg = str(exc)
+            if ("429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg) and attempt < max_retries - 1:
+                match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_msg, re.IGNORECASE)
+                if not match:
+                    match = re.search(r"retryDelay':\s*'(\d+)s", err_msg)
+                wait_time = (float(match.group(1)) + 2.0) if match else 25.0
+                time.sleep(wait_time)
+                continue
+            raise
+
+
+def index_pdf(client, collection_name, pdf_path, session_id=None):
     """
     Index a PDF page-by-page. Existing documents are preserved.
-    Re-uploading a filename replaces only that filename's older vectors.
+    Re-uploading a filename replaces only that filename's older vectors within the session.
     """
     pages = load_pdf_pages(pdf_path)
 
@@ -30,7 +48,7 @@ def index_pdf(client, collection_name, pdf_path):
         raise ValueError("No text chunks could be created from this PDF.")
 
     embedding_model = get_embedding_model()
-    vectors = embedding_model.embed_documents(chunks)
+    vectors = _embed_chunks_with_retry(embedding_model, chunks)
 
     if not vectors:
         raise ValueError("The embedding model returned no vectors.")
@@ -53,14 +71,16 @@ def index_pdf(client, collection_name, pdf_path):
         vectors=vectors,
         source_file=source_file,
         chunk_metadata=chunk_metadata,
-        document_id=document_id
+        document_id=document_id,
+        session_id=session_id
     )
 
     delete_other_versions_of_document(
         client,
         collection_name,
         source_file,
-        saved_document_id
+        saved_document_id,
+        session_id=session_id
     )
 
     return len(chunks)
