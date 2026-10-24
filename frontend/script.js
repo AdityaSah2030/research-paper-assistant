@@ -215,6 +215,49 @@ const uploadBtn =
 const uploadStatus =
     document.getElementById("upload-status");
 
+const uploadedPapersList =
+    document.getElementById("uploaded-papers-list");
+
+async function refreshUploadedPapers() {
+    if (!uploadedPapersList) return;
+
+    try {
+        const response = await fetch("/documents");
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Could not load indexed papers.");
+        }
+
+        uploadedPapersList.innerHTML = "";
+
+        if (!data.documents || data.documents.length === 0) {
+            uploadedPapersList.textContent = "No papers indexed yet.";
+            return;
+        }
+
+        data.documents.forEach(documentInfo => {
+            const row = document.createElement("div");
+            row.className = "uploaded-paper-row";
+
+            const name = document.createElement("span");
+            name.className = "uploaded-paper-name";
+            name.textContent = documentInfo.file_name;
+
+            const count = document.createElement("span");
+            count.className = "uploaded-paper-count";
+            count.textContent = `${documentInfo.chunks_indexed} chunks`;
+
+            row.append(name, count);
+            uploadedPapersList.appendChild(row);
+        });
+    } catch (error) {
+        uploadedPapersList.textContent = "Could not load the indexed paper list.";
+    }
+}
+
+refreshUploadedPapers();
+
 uploadBtn.addEventListener(
     "click",
     async () => {
@@ -261,20 +304,25 @@ uploadBtn.addEventListener(
                     }
                 );
 
-            const data =
-                await response.json();
+            const responseText = await response.text();
+            let data;
 
-            if (!response.ok) {
+            try {
+                data = JSON.parse(responseText);
+            } catch {
                 throw new Error(
-                    data.detail ||
-                    "Upload failed"
+                    `Upload failed (HTTP ${response.status}). Check server logs.`
                 );
             }
 
-            uploadStatus.innerHTML = `
-                <strong>${data.file_name}</strong><br>
-                Indexed successfully • ${data.chunks_indexed} chunks created
-            `;
+            if (!response.ok) {
+                throw new Error(data.detail || "Upload failed");
+            }
+
+            uploadStatus.textContent =
+                `Indexed ${data.file_name} • ${data.chunks_indexed} chunks created`;
+
+            await refreshUploadedPapers();
 
         } catch (error) {
 
@@ -401,15 +449,19 @@ askBtn.addEventListener(
                     }
                 );
 
-            const data =
-                await response.json();
+            const responseText = await response.text();
+            let data;
+
+            try {
+                data = JSON.parse(responseText);
+            } catch {
+                throw new Error(
+                    `Question failed (HTTP ${response.status}). Check server logs.`
+                );
+            }
 
             if (!response.ok) {
-
-                throw new Error(
-                    data.detail ||
-                    "Request failed"
-                );
+                throw new Error(data.detail || "Request failed");
             }
 
             answerBox.innerHTML = `
@@ -438,26 +490,23 @@ askBtn.addEventListener(
 
             sourcesBox.innerHTML = "";
 
-            data.sources.forEach(
-                source => {
+            (data.sources || []).forEach(source => {
+                const sourceDiv = document.createElement("div");
+                sourceDiv.className = "source-item";
 
-                    const sourceDiv =
-                        document.createElement(
-                            "div"
-                        );
+                const pageLabel = source.page_number
+                    ? ` • Page ${source.page_number}`
+                    : " • Page number unavailable";
 
-                    sourceDiv.className =
-                        "source-item";
+                sourceDiv.textContent =
+                    `📄 ${source.source || "Unknown document"}${pageLabel} • Chunk ${source.chunk_id ?? "?"}`;
 
-                    sourceDiv.innerHTML =
-                        `📄 ${source.source}
-                        (Chunk ${source.chunk_id})`;
+                sourcesBox.appendChild(sourceDiv);
+            });
 
-                    sourcesBox.appendChild(
-                        sourceDiv
-                    );
-                }
-            );
+            if (!data.sources || data.sources.length === 0) {
+                sourcesBox.textContent = "No supporting passages were retrieved.";
+            }
 
         } catch (error) {
 

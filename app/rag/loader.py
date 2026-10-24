@@ -2,27 +2,26 @@ from pypdf import PdfReader
 
 
 def load_pdf_pages(pdf_path: str) -> list[dict]:
-    """
-    Extract text page by page so chunks can retain accurate page numbers.
-    Page numbers are 1-based, matching the PDF viewer.
-    """
+    """Extract non-empty PDF pages while preserving 1-based page numbers."""
     reader = PdfReader(pdf_path)
     pages = []
 
     for page_number, page in enumerate(reader.pages, start=1):
-        extracted_text = page.extract_text() or ""
-        if extracted_text.strip():
+        text = page.extract_text() or ""
+        if text.strip():
             pages.append({
                 "page_number": page_number,
-                "text": extracted_text
+                "text": text
             })
 
     if not pages:
-        raise ValueError("No extractable text found in this PDF.")
+        raise ValueError(
+            "No extractable text was found. The PDF may be scanned or empty."
+        )
 
     return pages
 
 
 def load_pdf(pdf_path: str) -> str:
-    """Load a PDF and return all extracted text (backward-compatible helper)."""
+    """Backward-compatible helper returning the whole PDF as text."""
     return "\n".join(page["text"] for page in load_pdf_pages(pdf_path))

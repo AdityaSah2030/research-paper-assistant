@@ -717,3 +717,41 @@ footer {
 #sources-output .placeholder-box{
     flex:1;
 }
+
+
+/* Indexed paper list */
+.uploaded-papers-section {
+    margin-top: 1.25rem;
+}
+
+.uploaded-papers-section h3 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.uploaded-papers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.uploaded-paper-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.uploaded-paper-name {
+    overflow-wrap: anywhere;
+    color: var(--text-primary);
+}
+
+.uploaded-paper-count {
+    flex-shrink: 0;
+    white-space: nowrap;
+}

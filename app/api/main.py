@@ -1,15 +1,15 @@
+from pathlib import Path
+import os
+import shutil
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-import os
-import shutil
-from pathlib import Path
-
 from app.api.schemas import QuestionRequest
 from app.rag.indexer import index_pdf
 from app.rag.retriever import retrieve_chunks
-from app.rag.vector_store import get_qdrant_client
+from app.rag.vector_store import get_qdrant_client, get_document_catalog
 from app.llm.gemini_client import generate_answer
 
 
@@ -41,12 +41,23 @@ def health():
     return {"status": "healthy"}
 
 
+@app.get("/documents")
+def list_documents():
+    """List all currently indexed PDFs and their chunk counts."""
+    try:
+        return {"documents": get_document_catalog(client, COLLECTION_NAME)}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not list indexed documents: {type(exc).__name__}: {exc}"
+        ) from exc
+
+
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
     if not file.filename or Path(file.filename).suffix.lower() != ".pdf":
         raise HTTPException(status_code=400, detail="Please upload a PDF file.")
 
-    # Avoid path traversal and preserve only the supplied filename.
     safe_name = Path(file.filename).name
     file_path = os.path.join(UPLOAD_DIR, safe_name)
 
@@ -56,7 +67,6 @@ async def upload_pdf(file: UploadFile = File(...)):
 
         chunk_count = index_pdf(client, COLLECTION_NAME, file_path)
     except Exception as exc:
-        # Keep the detail useful to the client without exposing secrets.
         raise HTTPException(
             status_code=500,
             detail=f"Could not index PDF: {type(exc).__name__}: {exc}"
@@ -93,15 +103,17 @@ def ask_question(request: QuestionRequest):
 
         context_parts = []
         for chunk in retrieved_chunks:
-            page = chunk.get("page_number")
-            page_label = f"Page {page}" if page is not None else "Page unknown"
+            page_number = chunk.get("page_number")
+            page_label = f"Page {page_number}" if page_number is not None else "Page number unavailable"
             context_parts.append(
                 f"[Source: {chunk['source']} | {page_label} | "
                 f"Chunk {chunk.get('chunk_id', 'unknown')}]\n{chunk['text']}"
             )
 
-        context = "\n\n".join(context_parts)
-        answer = generate_answer(question, context)
+        answer = generate_answer(
+            question,
+            "\n\n".join(context_parts)
+        )
 
         sources = [
             {
@@ -120,7 +132,6 @@ def ask_question(request: QuestionRequest):
             "sources": sources
         }
     except Exception as exc:
-        # Avoid a silent generic error; the frontend can show this detail.
         raise HTTPException(
             status_code=502,
             detail=f"Question answering failed: {type(exc).__name__}: {exc}"

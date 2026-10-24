@@ -5,7 +5,11 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
     VectorParams,
-    PointStruct
+    PointStruct,
+    Filter,
+    FieldCondition,
+    MatchValue,
+    FilterSelector,
 )
 
 
@@ -16,13 +20,18 @@ def get_qdrant_client():
     )
 
 
-def create_collection(
-    client,
-    collection_name="research_papers",
-    vector_size=3072
-):
-    # Do not treat every Qdrant error as "collection missing".
+def create_collection(client, collection_name="research_papers", vector_size=3072):
+    """Create the collection only when absent; never delete it during upload."""
     if client.collection_exists(collection_name=collection_name):
+        info = client.get_collection(collection_name=collection_name)
+        current_size = info.config.params.vectors.size
+
+        if current_size != vector_size:
+            raise ValueError(
+                f"Qdrant collection uses {current_size}-dimensional vectors, "
+                f"but the current embedding model produced {vector_size}. "
+                "Use a compatible collection/model or create a new collection."
+            )
         return
 
     client.create_collection(
@@ -43,16 +52,13 @@ def upload_vectors(
     chunk_metadata=None,
     document_id=None
 ):
-    """
-    Store chunks with unique point IDs so different documents/chunks
-    cannot overwrite one another.
-    """
+    """Upsert one document with unique vector IDs and page-level metadata."""
     if len(chunks) != len(vectors):
-        raise ValueError("The number of chunks and vectors must match.")
+        raise ValueError("Chunk count and embedding count do not match.")
 
     chunk_metadata = chunk_metadata or [{} for _ in chunks]
     if len(chunk_metadata) != len(chunks):
-        raise ValueError("The number of chunk metadata records must match.")
+        raise ValueError("Chunk metadata count does not match chunk count.")
 
     document_id = document_id or str(uuid.uuid4())
     points = []
@@ -66,8 +72,10 @@ def upload_vectors(
             "document_id": document_id,
             "chunk_id": idx,
         }
-        if metadata.get("page_number") is not None:
-            payload["page_number"] = metadata["page_number"]
+
+        page_number = metadata.get("page_number")
+        if page_number is not None:
+            payload["page_number"] = page_number
 
         points.append(
             PointStruct(
@@ -87,15 +95,86 @@ def upload_vectors(
     return document_id
 
 
-def search_vectors(
+def delete_other_versions_of_document(
     client,
     collection_name,
-    query_vector,
-    limit=3
+    source_file,
+    keep_document_id
 ):
-    return client.query_points(
+    """
+    Replace an earlier upload with the same filename only.
+    Other filenames/documents in the collection are preserved.
+    Legacy points without document_id are also removed for this filename.
+    """
+    client.delete(
+        collection_name=collection_name,
+        points_selector=FilterSelector(
+            filter=Filter(
+                must=[
+                    FieldCondition(
+                        key="source",
+                        match=MatchValue(value=source_file)
+                    )
+                ],
+                must_not=[
+                    FieldCondition(
+                        key="document_id",
+                        match=MatchValue(value=keep_document_id)
+                    )
+                ]
+            )
+        ),
+        wait=True
+    )
+
+
+def get_document_catalog(client, collection_name):
+    """Return unique filenames and indexed chunk counts from Qdrant payloads."""
+    documents = {}
+    offset = None
+
+    while True:
+        points, next_offset = client.scroll(
+            collection_name=collection_name,
+            limit=256,
+            offset=offset,
+            with_payload=["source"]
+        )
+
+        for point in points:
+            payload = point.payload or {}
+            source = payload.get("source")
+            if not source:
+                continue
+
+            if source not in documents:
+                documents[source] = {"file_name": source, "chunks_indexed": 0}
+            documents[source]["chunks_indexed"] += 1
+
+        if next_offset is None:
+            break
+        offset = next_offset
+
+    return sorted(documents.values(), key=lambda item: item["file_name"].lower())
+
+
+def search_vectors(client, collection_name, query_vector, limit=3, source_file=None):
+    query_filter = None
+    if source_file:
+        query_filter = Filter(
+            must=[
+                FieldCondition(
+                    key="source",
+                    match=MatchValue(value=source_file)
+                )
+            ]
+        )
+
+    response = client.query_points(
         collection_name=collection_name,
         query=query_vector,
+        query_filter=query_filter,
         limit=limit,
         with_payload=True
-    ).points
+    )
+    return response.points
