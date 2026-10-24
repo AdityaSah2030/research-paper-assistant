@@ -6,13 +6,10 @@ def retrieve_chunks(
     client,
     collection_name,
     question,
-    top_k=3
+    top_k=5
 ):
     embedding_model = get_embedding_model()
-
-    query_vector = embedding_model.embed_query(
-        question
-    )
+    query_vector = embedding_model.embed_query(question)
 
     results = search_vectors(
         client,
@@ -21,11 +18,19 @@ def retrieve_chunks(
         limit=top_k
     )
 
-    return [
-        {
-            "text": result.payload["text"],
-            "source": result.payload["source"],
-            "chunk_id": result.payload["chunk_id"]
-        }
-        for result in results
-    ]
+    retrieved = []
+    for result in results:
+        payload = result.payload or {}
+        if not payload.get("text"):
+            continue
+
+        retrieved.append({
+            "text": payload["text"],
+            "source": payload.get("source", "Unknown document"),
+            "document_id": payload.get("document_id"),
+            "chunk_id": payload.get("chunk_id"),
+            "page_number": payload.get("page_number"),
+            "score": getattr(result, "score", None)
+        })
+
+    return retrieved
